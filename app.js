@@ -6,6 +6,11 @@ const ejs = require('ejs')
 const mongoose = require('mongoose')
 const encrypt = require('mongoose-encryption')
 const bcrypt = require('bcrypt')
+const session = require('express-session')
+const passport = require('passport')
+const passportLocalMongoose = require('passport-local-mongoose')
+const { use } = require('passport/lib')
+
 
 const app = express()
 
@@ -14,6 +19,14 @@ const saltRounds = 10
 app.set('view engine', 'ejs')
 app.use(express.static('public'))
 app.use(bodyParser.urlencoded({ extended: true }))
+app.set('trust proxy', 1)
+app.use(session({
+  secret: 'my secret',
+  resave: false,
+  saveUninitialized: false
+}))
+app.use(passport.initialize())
+app.use(passport.session())
 
 mongoose.connect("mongodb://127.0.0.1:27017/userDB", { useNewUrlParser: true })
 
@@ -22,9 +35,14 @@ const userSchema = new mongoose.Schema ({
   password: String
 })
 
-// userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"]})
+userSchema.plugin(passportLocalMongoose);
 
 const User = mongoose.model('User', userSchema)
+
+passport.use(User.createStrategy());
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 // ROOT ROUTE
 app.get('/', function(req,res) {
